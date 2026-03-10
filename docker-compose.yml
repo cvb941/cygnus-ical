@@ -1,0 +1,17 @@
+services:
+  cygnus-ical:
+    image: cvb941/cygnus-ical:latest
+    container_name: cygnus-ical
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      CYGNUS_EMAIL: "${CYGNUS_EMAIL}"
+      CYGNUS_PASSWORD: "${CYGNUS_PASSWORD}"
+      CYGNUS_INSTANCE: "${CYGNUS_INSTANCE:-}"
+      CYGNUS_TIMEZONE: "${CYGNUS_TIMEZONE:-Europe/Prague}"
+      CYGNUS_CALENDAR_NAME: "${CYGNUS_CALENDAR_NAME:-Cygnus zmeny}"
+      CYGNUS_INCLUDE_EXCEPTIONS: "${CYGNUS_INCLUDE_EXCEPTIONS:-false}"
+      CYGNUS_MONTHS: "${CYGNUS_MONTHS:-3}"
+      CALENDAR_TOKEN: "${CALENDAR_TOKEN}"
+      CACHE_TTL_MS: "${CACHE_TTL_MS:-300000}"

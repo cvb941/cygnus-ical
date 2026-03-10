@@ -1,0 +1,3 @@
+*.ics
+.env
+index.bundle.js

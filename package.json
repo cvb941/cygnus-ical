@@ -1,0 +1,11 @@
+{
+  "name": "cygnus-ical",
+  "version": "1.0.0",
+  "description": "Export pracovnych zmien z Mobilni Cygnus do iCal kalendara.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node src/server.js",
+    "export": "node src/cli.js"
+  }
+}
