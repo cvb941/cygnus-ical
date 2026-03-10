@@ -1,6 +1,6 @@
 # CygnusIcal
 
-HTTP server, ktory cita pracovne zmeny z `Mobilni Cygnus` a vystavi ich ako `.ics` URL pre odber kalendara.
+HTTP server, ktory cita pracovne zmeny z `Mobilni Cygnus` a vystavi ich ako `.ics` alebo `jCal` URL pre odber kalendara.
 
 Nepouziva ziadne externe npm baliky. Staci `node` 18+.
 
@@ -8,6 +8,7 @@ Nepouziva ziadne externe npm baliky. Staci `node` 18+.
 
 - `GET /healthz` - healthcheck
 - `GET /calendar.ics` - iCal feed
+- `GET /calendar.jcal` - jCal feed (`application/calendar+json`)
 - `GET /calendar.json` - JSON feed pre vlastne integracie (napr. Laravel/TRMNL)
 
 Ak nastavis `CALENDAR_TOKEN`, feed je chraneny a treba volat:
@@ -57,6 +58,12 @@ JSON feed:
 http://localhost:3000/calendar.json?token=tajny_token
 ```
 
+jCal feed:
+
+```text
+http://localhost:3000/calendar.jcal?token=tajny_token
+```
+
 ## Parametre feedu
 
 Volitelne query parametre:
@@ -66,7 +73,7 @@ Volitelne query parametre:
 - `months=3`
 - `includeExceptions=true`
 - `timezone=Europe/Prague`
-- `calendarName=Pracovne zmeny`
+- `calendarName=Cygnus směny`
 
 Ak neposles `from` a `to`, server vracia rolling rozsah od zaciatku aktualneho mesiaca na pocet mesiacov podla `CYGNUS_MONTHS`.
 
@@ -99,6 +106,12 @@ JSON URL:
 
 ```text
 http://localhost:3000/calendar.json?token=tajny_token
+```
+
+jCal URL:
+
+```text
+http://localhost:3000/calendar.jcal?token=tajny_token
 ```
 
 ## Docker Compose
@@ -155,6 +168,12 @@ Povodny jednorazovy export ostal k dispozicii:
 npm run export -- --from 2026-03-01 --to 2026-03-31 --output zmeny.ics
 ```
 
+Export do `jCal`:
+
+```bash
+npm run export -- --from 2026-03-01 --to 2026-03-31 --format jcal --output zmeny.jcal
+```
+
 ## Laravel / TRMNL
 
 Pre TRMNL je spravidla lepsie pouzit `JSON` alebo `ICS`, nie `CalDAV`.
@@ -185,5 +204,11 @@ JSON odpoved obsahuje:
 - `from`, `to`
 - `eventCount`
 - `events[]` s polami `summary`, `description`, `startDate`, `startTime`, `endDate`, `endTime`, `startsAt`, `endsAt`, `allDay`
+- `monthGrid` pre jednoduche renderovanie mesacnej mriezky v Liquid/TRMNL:
+  - `weekStartsOn`, `weekdays[]`
+  - `months[]` kde kazdy mesiac ma `month`, `label`, `weeks[]`
+  - `weeks[]` je pole tyzdnov, kazdy tyzden ma 7 dni:
+    - `date`, `day`, `inMonth`, `isToday`, `shifts[]`
+    - `shifts[]` ma `code`, `startTime`, `endTime`, `summary`, `isNight`
 
 Hotovy Laravel widget priklad je v [examples/laravel-trmnl/README.md](/Users/cvb941/src/CygnusIcal/examples/laravel-trmnl/README.md).

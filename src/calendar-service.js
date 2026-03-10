@@ -1,5 +1,6 @@
 import { CygnusClient } from "./cygnus-client.js";
 import { buildIcs } from "./ics.js";
+import { buildJcal } from "./jcal.js";
 
 export async function fetchCalendarExport(options) {
   validateCalendarOptions(options);
@@ -26,14 +27,19 @@ export async function fetchCalendarExport(options) {
     allEvents.filter((event) => isDateInRange(event.startDate, options.from, options.to)),
   ).sort(compareEvents);
 
-  const calendarName = options.calendarName ?? `Cygnus zmeny (${loginInfo.instanceName})`;
+  const calendarName = options.calendarName ?? `Cygnus směny (${loginInfo.instanceName})`;
   const ics = buildIcs(dedupedEvents, {
+    calendarName,
+    timeZone: options.timezone,
+  });
+  const jcal = buildJcal(dedupedEvents, {
     calendarName,
     timeZone: options.timezone,
   });
 
   return {
     ics,
+    jcal,
     eventCount: dedupedEvents.length,
     events: dedupedEvents.map((event) => serializeEvent(event, options.timezone)),
     instanceName: loginInfo.instanceName,

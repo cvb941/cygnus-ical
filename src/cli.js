@@ -15,16 +15,19 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   validateCalendarOptions(options);
   const result = await fetchCalendarExport(options);
+  const outputFormat = options.format ?? inferFormatFromPath(options.output);
+  const outputBody = outputFormat === "jcal" ? JSON.stringify(result.jcal, null, 2) : result.ics;
 
   const outputPath = path.resolve(process.cwd(), options.output);
   await mkdir(path.dirname(outputPath), { recursive: true });
-  await writeFile(outputPath, result.ics, "utf8");
+  await writeFile(outputPath, outputBody, "utf8");
 
   process.stdout.write(
     [
       `Instancia: ${result.instanceName}`,
       `Obdobie: ${result.from} -> ${result.to}`,
       `Udalosti: ${result.eventCount}`,
+      `Format: ${outputFormat}`,
       `Vystup: ${outputPath}`,
     ].join("\n") + "\n",
   );
@@ -37,6 +40,7 @@ function parseArgs(argv) {
     instance: process.env.CYGNUS_INSTANCE,
     timezone: process.env.CYGNUS_TIMEZONE || "Europe/Prague",
     output: "cygnus-shifts.ics",
+    format: normalizeFormat(process.env.CYGNUS_FORMAT),
     includeExceptions: parseBoolean(process.env.CYGNUS_INCLUDE_EXCEPTIONS, false),
     calendarName: process.env.CYGNUS_CALENDAR_NAME,
     months: parsePositiveInteger(process.env.CYGNUS_MONTHS, 1),
@@ -81,6 +85,13 @@ function parseArgs(argv) {
         args.output = value;
         index += 1;
         break;
+      case "--format":
+        args.format = normalizeFormat(value);
+        if (!args.format) {
+          throw new Error(`Neznamy format: ${value}`);
+        }
+        index += 1;
+        break;
       case "--timezone":
         args.timezone = value;
         index += 1;
@@ -122,6 +133,7 @@ Moznosti:
   --to YYYY-MM-DD          koniec exportu
   --months N               pocet mesiacov od --from, ak nepouzijes --to
   --output SUBOR.ics       vystupny subor
+  --format ics|jcal        format vystupu, inak podla pripony suboru
   --timezone ZONA          predvolene Europe/Prague
   --calendar-name NAZOV    nazov kalendara v ICS
   --include-exceptions     prida aj vyjimky
@@ -131,6 +143,23 @@ Moznosti:
 
 function currentDateString() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function normalizeFormat(value) {
+  if (!value) {
+    return undefined;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  if (["ics", "jcal"].includes(normalized)) {
+    return normalized;
+  }
+
+  return undefined;
+}
+
+function inferFormatFromPath(outputPath) {
+  return outputPath.toLowerCase().endsWith(".jcal") ? "jcal" : "ics";
 }
 
 main().catch((error) => {

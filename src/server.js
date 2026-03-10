@@ -31,6 +31,7 @@ const server = http.createServer(async (request, response) => {
       sendJson(response, 200, {
         ok: true,
         calendarPath: "/calendar.ics",
+        jcalPath: "/calendar.jcal",
         jsonPath: "/calendar.json",
         protected: Boolean(config.calendarToken),
         defaultMonths: config.defaultMonths,
@@ -38,7 +39,7 @@ const server = http.createServer(async (request, response) => {
       return;
     }
 
-    if (!["/calendar.ics", "/calendar.json"].includes(url.pathname)) {
+    if (!["/calendar.ics", "/calendar.jcal", "/calendar.json"].includes(url.pathname)) {
       sendText(response, 404, "Not Found");
       return;
     }
@@ -56,6 +57,11 @@ const server = http.createServer(async (request, response) => {
     if (cached && cached.expiresAt > now) {
       if (url.pathname === "/calendar.json") {
         sendJson(response, 200, buildJsonResponse(cached.result, true));
+        return;
+      }
+
+      if (url.pathname === "/calendar.jcal") {
+        sendJcal(response, cached.result.jcal, cached.filename, true);
         return;
       }
 
@@ -83,6 +89,15 @@ const server = http.createServer(async (request, response) => {
 
     if (url.pathname === "/calendar.json") {
       sendJson(response, 200, buildJsonResponse(result, false));
+      return;
+    }
+
+    if (url.pathname === "/calendar.jcal") {
+      sendJcal(response, result.jcal, filename, false, {
+        "X-Cygnus-Instance": result.instanceName,
+        "X-Cygnus-Event-Count": String(result.eventCount),
+        "X-Cygnus-Range": `${result.from}:${result.to}`,
+      });
       return;
     }
 
@@ -186,6 +201,17 @@ function sendCalendar(response, body, filename, fromCache, extraHeaders = {}) {
   response.end(body);
 }
 
+function sendJcal(response, body, filename, fromCache, extraHeaders = {}) {
+  response.writeHead(200, {
+    "Content-Type": "application/calendar+json; charset=utf-8",
+    "Content-Disposition": `inline; filename="${replaceExtension(filename, ".jcal")}"`,
+    "Cache-Control": "no-store",
+    "X-Cache": fromCache ? "HIT" : "MISS",
+    ...extraHeaders,
+  });
+  response.end(JSON.stringify(body));
+}
+
 function sendText(response, statusCode, body) {
   response.writeHead(statusCode, {
     "Content-Type": "text/plain; charset=utf-8",
@@ -211,7 +237,13 @@ function buildFileName(calendarName) {
   return `${safeName || "cygnus-shifts"}.ics`;
 }
 
+function replaceExtension(filename, extension) {
+  return filename.replace(/\.[^.]+$/, extension);
+}
+
 function buildJsonResponse(result, fromCache) {
+  const monthGrid = buildMonthGrid(result.events, result.from, result.to);
+
   return {
     ok: true,
     calendarName: result.calendarName,
@@ -220,6 +252,155 @@ function buildJsonResponse(result, fromCache) {
     to: result.to,
     eventCount: result.eventCount,
     events: result.events,
+    monthGrid,
     cache: fromCache ? "HIT" : "MISS",
   };
+}
+
+function buildMonthGrid(events, from, to) {
+  const eventsByDate = groupEventsByStartDate(events);
+  const monthStart = startOfMonth(from);
+  const monthLimit = startOfMonth(to);
+  const months = [];
+  let cursor = monthStart;
+
+  while (cursor <= monthLimit) {
+    const monthEnd = endOfMonth(cursor);
+    const gridStart = startOfWeekMonday(cursor);
+    const gridEnd = endOfWeekSunday(monthEnd);
+    const weeks = [];
+    let dayCursor = gridStart;
+
+    while (dayCursor <= gridEnd) {
+      const week = [];
+
+      for (let dayOffset = 0; dayOffset < 7; dayOffset += 1) {
+        const shifts = eventsByDate.get(dayCursor) ?? [];
+
+        week.push({
+          date: dayCursor,
+          day: Number(dayCursor.slice(8, 10)),
+          inMonth: dayCursor.slice(0, 7) === cursor.slice(0, 7),
+          isToday: dayCursor === currentDateString(),
+          shifts,
+        });
+
+        dayCursor = addDays(dayCursor, 1);
+      }
+
+      weeks.push(week);
+    }
+
+    months.push({
+      month: cursor.slice(0, 7),
+      label: cursor.slice(0, 7),
+      weeks,
+    });
+
+    cursor = addMonths(cursor, 1);
+  }
+
+  return {
+    weekStartsOn: "monday",
+    weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    months,
+  };
+}
+
+function groupEventsByStartDate(events) {
+  const byDate = new Map();
+
+  for (const event of events ?? []) {
+    if (!event?.startDate) {
+      continue;
+    }
+
+    const dateEvents = byDate.get(event.startDate) ?? [];
+    dateEvents.push({
+      code: extractShiftCode(event),
+      startTime: event.startTime ?? null,
+      endTime: event.endTime ?? null,
+      summary: event.summary ?? "",
+      isNight: isNightShift(event),
+    });
+    byDate.set(event.startDate, dateEvents);
+  }
+
+  return byDate;
+}
+
+function extractShiftCode(event) {
+  const descriptionMatch = String(event.description ?? "").match(/Typ změny:\s*([A-Z0-9]+)/i);
+  if (descriptionMatch?.[1]) {
+    return descriptionMatch[1].toUpperCase();
+  }
+
+  const summaryMatch = String(event.summary ?? "").match(/\b([A-Z][0-9]+)\b/);
+  if (summaryMatch?.[1]) {
+    return summaryMatch[1].toUpperCase();
+  }
+
+  return "SM";
+}
+
+function isNightShift(event) {
+  const code = extractShiftCode(event);
+  if (code.startsWith("N")) {
+    return true;
+  }
+  return String(event.summary ?? "").toLowerCase().includes("noční");
+}
+
+function startOfMonth(date) {
+  return `${date.slice(0, 7)}-01`;
+}
+
+function endOfMonth(date) {
+  const [year, month] = date.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0));
+  return formatDate(lastDay);
+}
+
+function addMonths(date, months) {
+  const [yearText, monthText] = date.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const totalMonths = year * 12 + (month - 1) + months;
+  const nextYear = Math.floor(totalMonths / 12);
+  const nextMonth = (totalMonths % 12) + 1;
+  return `${String(nextYear).padStart(4, "0")}-${String(nextMonth).padStart(2, "0")}-01`;
+}
+
+function addDays(date, days) {
+  const [year, month, day] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(year, month - 1, day + days));
+  return formatDate(next);
+}
+
+function startOfWeekMonday(date) {
+  const dayIndex = dayOfWeek(date);
+  const offset = dayIndex === 0 ? -6 : 1 - dayIndex;
+  return addDays(date, offset);
+}
+
+function endOfWeekSunday(date) {
+  const dayIndex = dayOfWeek(date);
+  const offset = dayIndex === 0 ? 0 : 7 - dayIndex;
+  return addDays(date, offset);
+}
+
+function dayOfWeek(date) {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+function formatDate(date) {
+  const year = String(date.getUTCFullYear()).padStart(4, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function currentDateString() {
+  return formatDate(new Date());
 }
