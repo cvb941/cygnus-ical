@@ -35,6 +35,7 @@ export async function fetchCalendarExport(options) {
   return {
     ics,
     eventCount: dedupedEvents.length,
+    events: dedupedEvents.map((event) => serializeEvent(event, options.timezone)),
     instanceName: loginInfo.instanceName,
     from: options.from,
     to: options.to,
@@ -386,4 +387,13 @@ function formatDisplayTimeRange(startTime, endTime) {
 
 function currentDateString() {
   return formatDate(new Date());
+}
+
+function serializeEvent(event, timezone) {
+  return {
+    ...event,
+    timezone,
+    startsAt: event.allDay ? `${event.startDate}T00:00:00` : `${event.startDate}T${event.startTime}:00`,
+    endsAt: event.allDay ? `${event.endDate}T00:00:00` : `${event.endDate}T${event.endTime}:00`,
+  };
 }

@@ -31,13 +31,14 @@ const server = http.createServer(async (request, response) => {
       sendJson(response, 200, {
         ok: true,
         calendarPath: "/calendar.ics",
+        jsonPath: "/calendar.json",
         protected: Boolean(config.calendarToken),
         defaultMonths: config.defaultMonths,
       });
       return;
     }
 
-    if (url.pathname !== "/calendar.ics") {
+    if (!["/calendar.ics", "/calendar.json"].includes(url.pathname)) {
       sendText(response, 404, "Not Found");
       return;
     }
@@ -53,7 +54,12 @@ const server = http.createServer(async (request, response) => {
     const cached = cache.get(cacheKey);
 
     if (cached && cached.expiresAt > now) {
-      sendCalendar(response, cached.ics, cached.filename, true);
+      if (url.pathname === "/calendar.json") {
+        sendJson(response, 200, buildJsonResponse(cached.result, true));
+        return;
+      }
+
+      sendCalendar(response, cached.result.ics, cached.filename, true);
       return;
     }
 
@@ -70,10 +76,15 @@ const server = http.createServer(async (request, response) => {
 
     const filename = buildFileName(result.calendarName);
     cache.set(cacheKey, {
-      ics: result.ics,
+      result,
       filename,
       expiresAt: now + config.cacheTtlMs,
     });
+
+    if (url.pathname === "/calendar.json") {
+      sendJson(response, 200, buildJsonResponse(result, false));
+      return;
+    }
 
     sendCalendar(response, result.ics, filename, false, {
       "X-Cygnus-Instance": result.instanceName,
@@ -198,4 +209,17 @@ function buildFileName(calendarName) {
     .replace(/^-+|-+$/g, "");
 
   return `${safeName || "cygnus-shifts"}.ics`;
+}
+
+function buildJsonResponse(result, fromCache) {
+  return {
+    ok: true,
+    calendarName: result.calendarName,
+    instanceName: result.instanceName,
+    from: result.from,
+    to: result.to,
+    eventCount: result.eventCount,
+    events: result.events,
+    cache: fromCache ? "HIT" : "MISS",
+  };
 }

@@ -8,6 +8,7 @@ Nepouziva ziadne externe npm baliky. Staci `node` 18+.
 
 - `GET /healthz` - healthcheck
 - `GET /calendar.ics` - iCal feed
+- `GET /calendar.json` - JSON feed pre vlastne integracie (napr. Laravel/TRMNL)
 
 Ak nastavis `CALENDAR_TOKEN`, feed je chraneny a treba volat:
 
@@ -50,6 +51,12 @@ Feed potom bude dostupny napr. na:
 http://localhost:3000/calendar.ics?token=tajny_token
 ```
 
+JSON feed:
+
+```text
+http://localhost:3000/calendar.json?token=tajny_token
+```
+
 ## Parametre feedu
 
 Volitelne query parametre:
@@ -88,6 +95,12 @@ Feed URL:
 http://localhost:3000/calendar.ics?token=tajny_token
 ```
 
+JSON URL:
+
+```text
+http://localhost:3000/calendar.json?token=tajny_token
+```
+
 ## Docker Compose
 
 Skopiruj `.env.example` na `.env` a dopln hodnoty:
@@ -114,6 +127,26 @@ Feed URL:
 http://localhost:3000/calendar.ics?token=tajny_token
 ```
 
+## Push skript
+
+Multi-arch push na Docker Hub:
+
+```bash
+sh scripts/push_dockerhub.sh
+```
+
+Volitelne:
+
+```bash
+IMAGE_NAME=cvb941/cygnus-ical IMAGE_TAG=latest sh scripts/push_dockerhub.sh
+```
+
+JSON URL:
+
+```text
+http://localhost:3000/calendar.json?token=tajny_token
+```
+
 ## CLI export
 
 Povodny jednorazovy export ostal k dispozicii:
@@ -121,3 +154,36 @@ Povodny jednorazovy export ostal k dispozicii:
 ```bash
 npm run export -- --from 2026-03-01 --to 2026-03-31 --output zmeny.ics
 ```
+
+## Laravel / TRMNL
+
+Pre TRMNL je spravidla lepsie pouzit `JSON` alebo `ICS`, nie `CalDAV`.
+
+- `ICS` je vhodny, ak chces len odber kalendara.
+- `JSON` je vhodnejsi pre vlastny Laravel widget/plugin, lebo sa jednoducho parsuje a renderuje.
+- `CalDAV` sa oplati az ked potrebujes obojsmernu sync logiku, kolekcie, ETagy, update/delete operacie a kompatibilitu s kalendarovymi klientmi.
+
+Priklad jednoducheho Laravel requestu:
+
+```php
+$response = Http::timeout(15)->get('http://cygnus-ical:3000/calendar.json', [
+    'token' => config('services.cygnus_ical.token'),
+    'months' => 1,
+]);
+
+$events = collect($response->json('events', []))
+    ->filter(fn (array $event) => empty($event['allDay']))
+    ->sortBy('startsAt')
+    ->take(5)
+    ->values();
+```
+
+JSON odpoved obsahuje:
+
+- `calendarName`
+- `instanceName`
+- `from`, `to`
+- `eventCount`
+- `events[]` s polami `summary`, `description`, `startDate`, `startTime`, `endDate`, `endTime`, `startsAt`, `endsAt`, `allDay`
+
+Hotovy Laravel widget priklad je v [examples/laravel-trmnl/README.md](/Users/cvb941/src/CygnusIcal/examples/laravel-trmnl/README.md).
