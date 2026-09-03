@@ -1,0 +1,370 @@
+<div class="view view--{{ size | default: 'full' }}">
+  <style>
+    .view, .layout {
+      width: 100% !important;
+      max-width: none !important;
+      height: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      box-sizing: border-box;
+    }
+
+    .layout {
+      display: block !important;
+    }
+
+    .kal-wrap {
+      width: 100% !important;
+      height: 100% !important;
+      box-sizing: border-box;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      font-family: "IBM Plex Mono", Menlo, monospace;
+    }
+
+    .kal-hlavicka {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 8px;
+      margin-bottom: 6px;
+      flex: 0 0 auto;
+    }
+
+    .kal-nazev {
+      font-size: 22px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .kal-mesic-vpravo {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .kal-body {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    .kal-mriezka {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      grid-template-rows: 22px repeat(6, minmax(0, 1fr));
+      border-top: 1px solid #111;
+      border-left: 1px solid #111;
+      box-sizing: border-box;
+    }
+
+    .kal-hcell {
+      border-right: 1px solid #777;
+      border-bottom: 1px solid #777;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      background: #fafafa;
+    }
+
+    .kal-hcell:last-child {
+      border-right-color: #111;
+    }
+
+    .kal-vikend-hlavicka {
+      background: #ececec;
+    }
+
+    .kal-dcell {
+      position: relative;
+      border-right: 1px solid #111;
+      border-bottom: 1px solid #111;
+      overflow: hidden;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .kal-vikend {
+      background: #f1f1f1;
+    }
+
+    .kal-mimo {
+      background: #f6f6f6;
+      color: #8a8a8a;
+    }
+
+    .kal-mimo.kal-vikend {
+      background: #ebebeb;
+    }
+
+    .kal-dnes {
+      background: #111 !important;
+      color: #fff;
+      box-shadow: inset 0 0 0 2px #111;
+    }
+
+    .kal-den-hore {
+      position: absolute;
+      top: 2px;
+      left: 3px;
+      right: 3px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .kal-cislo {
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .kal-mimo .kal-cislo {
+      color: #8a8a8a;
+    }
+
+    .kal-dnes .kal-cislo,
+    .kal-dnes .kal-dnes-badge {
+      color: #fff;
+    }
+
+    .kal-dnes-badge {
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .kal-obsah {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    .kal-znak {
+      font-size: 64px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 1px;
+    }
+
+    .kal-volno {
+      font-size: 18px;
+      font-weight: 700;
+      opacity: 0.72;
+      letter-spacing: 0.5px;
+    }
+
+    .kal-vynimka-hlavna {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: 1px;
+    }
+
+    .kal-dovolenka {
+      font-size: 14px;
+      letter-spacing: 0.3px;
+    }
+
+    .kal-udalosti {
+      position: absolute;
+      left: 3px;
+      right: 3px;
+      bottom: 3px;
+      display: flex;
+      justify-content: center;
+      gap: 3px;
+      z-index: 3;
+      pointer-events: none;
+    }
+
+    .kal-udalost {
+      padding: 2px 4px;
+      border: 1px solid currentColor;
+      border-radius: 2px;
+      font-size: 8px;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .kal-dnes .kal-udalost {
+      background: #fff;
+      color: #111;
+      border-color: #fff;
+    }
+
+    @media (max-width: 1200px) {
+      .kal-wrap { padding: 6px; }
+      .kal-nazev { font-size: 19px; }
+      .kal-mesic-vpravo { font-size: 13px; }
+      .kal-cislo { font-size: 13px; }
+      .kal-dnes-badge { font-size: 8px; }
+      .kal-znak { font-size: 48px; }
+      .kal-volno { font-size: 14px; }
+      .kal-vynimka-hlavna { font-size: 18px; }
+      .kal-dovolenka { font-size: 12px; }
+      .kal-udalost { padding: 1px 3px; font-size: 7px; }
+      .kal-mriezka { grid-template-rows: 20px repeat(6, minmax(0, 1fr)); }
+      .kal-hcell { font-size: 9px; }
+    }
+  </style>
+
+  <div class="layout">
+    {% assign dnes = 'now' | date: "%Y-%m-%d" %}
+    {% assign dnes_mesic = dnes | slice: 0, 7 %}
+    {% assign mesice_cz = "leden,únor,březen,duben,květen,červen,červenec,srpen,září,říjen,listopad,prosinec" | split: "," %}
+    {% assign dny_cz = "Po,Út,St,Čt,Pá,So,Ne" | split: "," %}
+    {% assign nazev_kalendare = "Kalendář" %}
+
+    <div class="kal-wrap">
+      {% if monthGrid and monthGrid.months and monthGrid.months.size > 0 %}
+        {% assign vybrany_mesic = monthGrid.months.first %}
+        {% for m in monthGrid.months %}
+          {% if m.month == dnes_mesic %}
+            {% assign vybrany_mesic = m %}
+          {% endif %}
+        {% endfor %}
+
+        {% assign rok = vybrany_mesic.month | slice: 0, 4 %}
+        {% assign mesic_num = vybrany_mesic.month | slice: 5, 2 | plus: 0 %}
+        {% assign mesic_index = mesic_num | minus: 1 %}
+        {% assign mesic_nazev = mesice_cz[mesic_index] %}
+        {% assign nazev_mesice = mesic_nazev | capitalize | append: " " | append: rok %}
+        {% assign pocet_tydnu = vybrany_mesic.weeks.size %}
+        {% assign prazdne_tydny = 6 | minus: pocet_tydnu %}
+
+        <div class="kal-hlavicka">
+          <div class="kal-nazev">{{ nazev_kalendare }}</div>
+          <div class="kal-mesic-vpravo">{{ nazev_mesice }}</div>
+        </div>
+
+        <div class="kal-body">
+          <div class="kal-mriezka">
+            {% for d in dny_cz %}
+              {% assign vikend_h = false %}
+              {% if forloop.index == 6 or forloop.index == 7 %}
+                {% assign vikend_h = true %}
+              {% endif %}
+              <div class="kal-hcell {% if vikend_h %}kal-vikend-hlavicka{% endif %}">{{ d }}</div>
+            {% endfor %}
+
+            {% assign aktualny_mesic_zacal = false %}
+            {% for tyden in vybrany_mesic.weeks %}
+              {% for den in tyden %}
+                {% assign je_nasledujuci_mesic = false %}
+                {% if den.inMonth %}
+                  {% assign aktualny_mesic_zacal = true %}
+                {% elsif aktualny_mesic_zacal %}
+                  {% assign je_nasledujuci_mesic = true %}
+                {% endif %}
+                {% assign prvni_smena = nil %}
+                {% assign dovolena = nil %}
+                {% assign porada = nil %}
+                {% for udalost in den.shifts %}
+                  {% if udalost.kind == 'shift' %}
+                    {% unless prvni_smena %}{% assign prvni_smena = udalost %}{% endunless %}
+                  {% elsif udalost.kind == 'vacation' %}
+                    {% unless dovolena %}{% assign dovolena = udalost %}{% endunless %}
+                  {% elsif udalost.kind == 'meeting' %}
+                    {% unless porada %}{% assign porada = udalost %}{% endunless %}
+                  {% elsif udalost.kind == nil and udalost.code != 'SM' %}
+                    {% unless prvni_smena %}{% assign prvni_smena = udalost %}{% endunless %}
+                  {% endif %}
+                {% endfor %}
+                {% for udalost in events %}
+                  {% if udalost.startDate == den.date %}
+                    {% assign popis = udalost.description | default: '' %}
+                    {% if udalost.type == 'exception' or popis contains 'Typ výjimky:' %}
+                      {% assign text_udalosti = udalost.summary | append: ' ' | append: popis | downcase %}
+                      {% assign kod_udalosti = udalost.code | default: '' | upcase %}
+                      {% if text_udalosti contains 'dovol' or kod_udalosti contains 'DOV' %}
+                        {% unless dovolena %}{% assign dovolena = udalost %}{% endunless %}
+                      {% elsif text_udalosti contains 'porad' or kod_udalosti contains 'POR' or text_udalosti contains 'výjimky: por' %}
+                        {% unless porada %}{% assign porada = udalost %}{% endunless %}
+                      {% endif %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% assign znak = '' %}
+                {% if prvni_smena %}
+                  {% assign znak = prvni_smena.code | slice: 0, 1 | upcase %}
+                {% endif %}
+
+                {% assign je_vikend = false %}
+                {% if forloop.index == 6 or forloop.index == 7 %}
+                  {% assign je_vikend = true %}
+                {% endif %}
+
+                <div class="kal-dcell {% if je_vikend %}kal-vikend{% endif %} {% unless den.inMonth %}kal-mimo{% endunless %} {% if den.isToday or den.date == dnes %}kal-dnes{% endif %}">
+                  <div class="kal-den-hore">
+                    <div class="kal-cislo">{{ den.day }}</div>
+                    {% if den.isToday or den.date == dnes %}
+                      <div class="kal-dnes-badge">DNES</div>
+                    {% endif %}
+                  </div>
+
+                  <div class="kal-obsah">
+                    {% if znak == 'N' or znak == 'D' %}
+                      <div class="kal-znak">{{ znak }}</div>
+                    {% elsif prvni_smena %}
+                      <div class="kal-znak">{{ znak }}</div>
+                    {% elsif dovolena %}
+                      <div class="kal-vynimka-hlavna kal-dovolenka">DOVOLENKA! :D</div>
+                    {% elsif porada %}
+                      <div class="kal-vynimka-hlavna">POR</div>
+                    {% elsif den.inMonth or je_nasledujuci_mesic %}
+                      <div class="kal-volno">VOLNO! :)</div>
+                    {% endif %}
+                  </div>
+
+                  <div class="kal-udalosti">
+                    {% if dovolena and prvni_smena %}
+                      <div class="kal-udalost">DOVOLENKA! :D</div>
+                    {% endif %}
+                    {% if porada and prvni_smena or porada and dovolena %}
+                      <div class="kal-udalost">POR{% if porada.startTime %} {{ porada.startTime }}{% endif %}</div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            {% endfor %}
+
+            {% if prazdne_tydny > 0 %}
+              {% for t in (1..prazdne_tydny) %}
+                {% for x in (1..7) %}
+                  {% assign je_vikend_empty = false %}
+                  {% if x == 6 or x == 7 %}
+                    {% assign je_vikend_empty = true %}
+                  {% endif %}
+                  <div class="kal-dcell kal-mimo {% if je_vikend_empty %}kal-vikend{% endif %}"></div>
+                {% endfor %}
+              {% endfor %}
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="kal-hlavicka">
+          <div class="kal-nazev">{{ nazev_kalendare }}</div>
+          <div class="kal-mesic-vpravo">Bez dat</div>
+        </div>
+        <div style="border:1px solid #111;padding:10px;font-size:13px;">
+          V JSON odpovědi chybí `monthGrid`.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>

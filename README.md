@@ -29,7 +29,7 @@ Volitelne:
 - `CYGNUS_INSTANCE` - ak ma konto viac instancii
 - `CYGNUS_TIMEZONE` - default `Europe/Prague`
 - `CYGNUS_CALENDAR_NAME` - vlastny nazov kalendara
-- `CYGNUS_INCLUDE_EXCEPTIONS=true` - prida vyjimky
+- `CYGNUS_INCLUDE_EXCEPTIONS=false` - vypne vyjimky (predvolene su zapnute)
 - `CYGNUS_MONTHS=3` - kolko mesiacov dopredu ma feed generovat, ak neposles `from` a `to`
 - `CALENDAR_TOKEN` - ochrana feedu
 - `PORT=3000`
@@ -203,12 +203,13 @@ JSON odpoved obsahuje:
 - `instanceName`
 - `from`, `to`
 - `eventCount`
-- `events[]` s polami `summary`, `description`, `startDate`, `startTime`, `endDate`, `endTime`, `startsAt`, `endsAt`, `allDay`
+- `events[]` s polami `type`, `code`, `summary`, `description`, `startDate`, `startTime`, `endDate`, `endTime`, `startsAt`, `endsAt`, `allDay`
 - `monthGrid` pre jednoduche renderovanie mesacnej mriezky v Liquid/TRMNL:
   - `weekStartsOn`, `weekdays[]`
   - `months[]` kde kazdy mesiac ma `month`, `label`, `weeks[]`
   - `weeks[]` je pole tyzdnov, kazdy tyzden ma 7 dni:
     - `date`, `day`, `inMonth`, `isToday`, `shifts[]`
-    - `shifts[]` ma `code`, `startTime`, `endTime`, `summary`, `isNight`
+    - `shifts[]` ma `code`, `kind`, `startTime`, `endTime`, `summary`, `allDay`, `isNight`
+    - `kind` rozlisuje `shift`, `vacation`, `meeting` a inu `exception`
 
 Hotovy Laravel widget priklad je v [examples/laravel-trmnl/README.md](/Users/cvb941/src/CygnusIcal/examples/laravel-trmnl/README.md).

@@ -129,7 +129,7 @@ function readConfig(env) {
     instance: env.CYGNUS_INSTANCE,
     timezone: env.CYGNUS_TIMEZONE || "Europe/Prague",
     calendarName: env.CYGNUS_CALENDAR_NAME,
-    includeExceptions: parseBoolean(env.CYGNUS_INCLUDE_EXCEPTIONS, false),
+    includeExceptions: parseBoolean(env.CYGNUS_INCLUDE_EXCEPTIONS, true),
     defaultMonths: parsePositiveInteger(env.CYGNUS_MONTHS, 3),
     calendarToken: env.CALENDAR_TOKEN || "",
     cacheTtlMs: parsePositiveInteger(env.CACHE_TTL_MS, 300000),
@@ -265,9 +265,14 @@ function buildMonthGrid(events, from, to) {
   let cursor = monthStart;
 
   while (cursor <= monthLimit) {
-    const monthEnd = endOfMonth(cursor);
-    const gridStart = startOfWeekMonday(cursor);
-    const gridEnd = endOfWeekSunday(monthEnd);
+    let gridStart = startOfWeekMonday(cursor);
+
+    // Keep both adjacent months visible in the 6-row TRMNL grid.
+    if (gridStart === cursor) {
+      gridStart = addDays(gridStart, -7);
+    }
+
+    const gridEnd = addDays(gridStart, 41);
     const weeks = [];
     let dayCursor = gridStart;
 
@@ -316,11 +321,14 @@ function groupEventsByStartDate(events) {
     }
 
     const dateEvents = byDate.get(event.startDate) ?? [];
+    const code = extractEventCode(event);
     dateEvents.push({
-      code: extractShiftCode(event),
+      code,
+      kind: getEventKind(event, code),
       startTime: event.startTime ?? null,
       endTime: event.endTime ?? null,
       summary: event.summary ?? "",
+      allDay: Boolean(event.allDay),
       isNight: isNightShift(event),
     });
     byDate.set(event.startDate, dateEvents);
@@ -329,10 +337,19 @@ function groupEventsByStartDate(events) {
   return byDate;
 }
 
-function extractShiftCode(event) {
+function extractEventCode(event) {
+  if (event.code) {
+    return String(event.code).trim().toUpperCase();
+  }
+
   const descriptionMatch = String(event.description ?? "").match(/Typ změny:\s*([A-Z0-9]+)/i);
   if (descriptionMatch?.[1]) {
     return descriptionMatch[1].toUpperCase();
+  }
+
+  const exceptionMatch = String(event.description ?? "").match(/Typ výjimky:\s*([A-Z0-9]+)/i);
+  if (exceptionMatch?.[1]) {
+    return exceptionMatch[1].toUpperCase();
   }
 
   const summaryMatch = String(event.summary ?? "").match(/\b([A-Z][0-9]+)\b/);
@@ -343,8 +360,26 @@ function extractShiftCode(event) {
   return "SM";
 }
 
+function getEventKind(event, code) {
+  const description = String(event.description ?? "");
+  const isException = event.type === "exception" || /Typ výjimky:/i.test(description);
+
+  if (!isException) {
+    return "shift";
+  }
+
+  const text = `${event.summary ?? ""} ${description}`.toLocaleLowerCase("cs");
+  if (text.includes("dovol") || code.startsWith("DOV")) {
+    return "vacation";
+  }
+  if (text.includes("porad") || code.startsWith("POR")) {
+    return "meeting";
+  }
+  return "exception";
+}
+
 function isNightShift(event) {
-  const code = extractShiftCode(event);
+  const code = extractEventCode(event);
   if (code.startsWith("N")) {
     return true;
   }
@@ -380,12 +415,6 @@ function addDays(date, days) {
 function startOfWeekMonday(date) {
   const dayIndex = dayOfWeek(date);
   const offset = dayIndex === 0 ? -6 : 1 - dayIndex;
-  return addDays(date, offset);
-}
-
-function endOfWeekSunday(date) {
-  const dayIndex = dayOfWeek(date);
-  const offset = dayIndex === 0 ? 0 : 7 - dayIndex;
   return addDays(date, offset);
 }
 

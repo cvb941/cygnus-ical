@@ -138,6 +138,8 @@ function monthlyPlanToEvents(payload, { includeExceptions }) {
         ].filter(Boolean);
 
         events.push({
+          type: "shift",
+          code: shift.Zkratka ? String(shift.Zkratka).trim().toUpperCase() : "",
           startDate: parsed.startDate,
           startTime: parsed.startTime,
           endDate: parsed.endDate,
@@ -155,6 +157,8 @@ function monthlyPlanToEvents(payload, { includeExceptions }) {
         const parsed = parseTimeRange(exception.CasVyjimky, date);
         if (parsed) {
           events.push({
+            type: "exception",
+            code: exception.Zkratka ? String(exception.Zkratka).trim().toUpperCase() : "",
             startDate: parsed.startDate,
             startTime: parsed.startTime,
             endDate: parsed.endDate,
@@ -178,6 +182,8 @@ function monthlyPlanToEvents(payload, { includeExceptions }) {
         }
 
         events.push({
+          type: "exception",
+          code: exception.Zkratka ? String(exception.Zkratka).trim().toUpperCase() : "",
           startDate: date,
           endDate: addDays(date, 1),
           allDay: true,
